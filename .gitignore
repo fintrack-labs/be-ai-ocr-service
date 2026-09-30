@@ -144,3 +144,4 @@ vite.config.ts.timestamp-*
 
 # Keep the npm lockfile versioned even when a global gitignore excludes it.
 !package-lock.json
+local-debug/

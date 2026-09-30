@@ -38,6 +38,10 @@ export function buildApp({ config, fetchImpl = fetch, logger = true }) {
 
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof ServiceError) {
+      request.log?.warn?.(
+        { code: error.code, statusCode: error.statusCode },
+        "OCR request failed",
+      );
       return reply.code(error.statusCode).send({
         success: false,
         message: error.message,
@@ -46,14 +50,22 @@ export function buildApp({ config, fetchImpl = fetch, logger = true }) {
     }
 
     if (error.statusCode === 413 || error.code === "FST_REQ_FILE_TOO_LARGE") {
+      request.log?.warn?.(
+        { code: error.code ?? "FILE_TOO_LARGE", statusCode: 413 },
+        "OCR image rejected",
+      );
       return reply.code(413).send({ success: false, message: "The image exceeds the configured size limit.", data: null });
     }
 
     if (error.statusCode && error.statusCode < 500) {
+      request.log?.warn?.(
+        { code: error.code ?? "INVALID_REQUEST", statusCode: error.statusCode },
+        "OCR request rejected",
+      );
       return reply.code(error.statusCode).send({ success: false, message: "The request is invalid.", data: null });
     }
 
-    request.log.error({ code: error.code ?? "INTERNAL_ERROR" }, "Request processing failed");
+    request.log?.error?.({ code: error.code ?? "INTERNAL_ERROR" }, "Request processing failed");
     return reply.code(500).send({ success: false, message: "An internal error occurred.", data: null });
   });
 

@@ -68,6 +68,7 @@ export function loadConfig(env = process.env) {
     aiApiBaseUrl: normalizeBaseUrl(requiredString(env, "AI_API_BASE_URL"), "AI_API_BASE_URL", isProduction),
     aiApiKey: requiredString(env, "AI_API_KEY"),
     aiModel: requiredString(env, "AI_MODEL"),
+    debugAiPrompt: env.AI_DEBUG_PROMPT === "true",
     requestTimeoutMs: positiveInteger(env, "REQUEST_TIMEOUT_MS", 15000),
     maxImageBytes: positiveInteger(env, "MAX_IMAGE_BYTES", 10 * 1024 * 1024),
     masterDataPageSize: positiveInteger(env, "MASTER_DATA_PAGE_SIZE", 100),
