@@ -1,45 +1,79 @@
 # be-ai-ocr-service
 
-Stateless Fastify service that analyzes transaction images with a vision-capable, OpenAI-compatible chat-completions API. It forwards the caller's bearer token to the finance backend to retrieve that user's accounts and categories, then returns normalized AI output. It does not save images or create transactions.
+A **stateless service that reads a receipt photo and returns a structured transaction draft** using any OpenAI-compatible vision model.
 
-## Requirements
+![Node.js](https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white)
+![Fastify](https://img.shields.io/badge/Fastify-000000?logo=fastify&logoColor=white)
+![AI](https://img.shields.io/badge/Vision_AI-OpenAI--compatible-412991)
 
-- Node.js 22 or newer
-- npm
-- A BE-app URL whose `GET /accounts` and `GET /categories` endpoints accept the forwarded user token
-- An OpenAI-compatible vision API endpoint
+Part of [FinTrack Labs](https://github.com/fintrack-labs), a personal learning project on distributed backend design and applied AI.
 
-## Local setup
+<!-- TODO: contoh input struk + output JSON -->
 
-1. Copy `.env.example` to `.env` and set the BE-app URL, AI API URL, key, and model.
-2. Install dependencies with `npm install`.
-3. Run tests with `npm test` and the dependency security audit with `npm audit --audit-level=low`.
-4. Start the service with `node --env-file=.env src/server.js`.
+## What it does
 
-The API listens on `PORT` (default 3000). Health check: `GET /health`.
+Upload one image (JPEG, PNG, or WebP). The service looks up the user's own accounts and categories, asks a vision model to analyze the receipt, and returns a **validated** draft such as amount, date, merchant, suggested account, and suggested category. It never saves anything; the user reviews the draft in the app and submits it separately.
 
-## Analyze endpoint
+## Design principles (the interesting part)
 
-`POST /v1/ocr/analyze`
+- **AI output is untrusted.** The model's JSON is schema-validated, and any account/category it picks is matched against candidates that came from the finance API. Invented IDs or names are replaced with trusted values.
+- **Least data to the AI.** The provider receives the image plus a *minimized* candidate list, and never the user's bearer token.
+- **Delegated authorization.** The service forwards the caller's token to the finance API, which enforces access. The OCR service has no user database and does not verify JWTs itself.
+- **Stateless and private.** No images and no OCR results are persisted.
+- **Adapter, not a command service.** It cannot create transactions.
 
-Headers: `Authorization: Bearer <user-access-token>`
+## Flow
 
-Multipart fields:
+```mermaid
+sequenceDiagram
+    participant FE as fe-web
+    participant OCR as OCR service
+    participant Core as Finance API
+    participant AI as Vision provider
+    FE->>OCR: multipart image + bearer token
+    OCR->>OCR: validate type, fields, size
+    OCR->>Core: GET accounts, categories (forwarded token, all pages)
+    Core-->>OCR: user-scoped master data
+    OCR->>AI: image + minimized candidates
+    AI-->>OCR: untrusted JSON
+    OCR->>OCR: validate schema, map to trusted candidates
+    OCR-->>FE: normalized analysis
+```
 
-- `image`: required JPEG, PNG, or WebP image (10 MiB default maximum)
-- `documentType`: optional short document hint
-- `locale`: optional language/locale hint
+## API
 
-The service does not verify the caller's JWT itself; it forwards the bearer token to the configured BE-app, whose `AuthGuard` performs verification. Confirm that the token issuer/audience are accepted before deployment. The token is never sent to the AI provider.
+`POST /v1/ocr/analyze` (default port `3000`)
 
-Set `CORS_ALLOWED_ORIGINS` to the exact frontend origins allowed to call the service, comma-separated when needed. Development defaults to `http://localhost:5173`; production requires explicit HTTPS origins. Wildcard origins are not supported.
+- Header: `Authorization: Bearer <access token>`
+- Body: `multipart/form-data` with `image` (required), optional `documentType` and `locale`
+- Accepted formats: JPEG, PNG, WebP
 
-The first implementation uses an OpenAI-compatible `/chat/completions` API with JSON response mode and image URL input. Provider compatibility should be verified before configuring a production model.
+## Tech stack
 
-## Security notes
+Node.js · Fastify · OpenAI-compatible chat-completions API (vision)
 
-- Do not commit `.env` or real credentials.
-- CI fails on any known npm advisory across production, development, and transitive dependencies.
-- Keep `package-lock.json` committed and use `npm ci` in CI/deployments.
-- Accounts sent to the AI are minimized: balance is excluded and account numbers are reduced to their last four digits.
-- The service returns account/category names from backend candidates, never AI-generated names, and drops IDs that are not in those candidates.
+## Getting started
+
+Prerequisites: Node.js (LTS), a running [`be-node-ts`](https://github.com/fintrack-labs/be-node-ts), and an API key for an OpenAI-compatible vision provider.
+
+```bash
+git clone https://github.com/fintrack-labs/be-ai-ocr-service.git
+cd be-ai-ocr-service
+npm install
+cp .env.example .env      # provider URL, API key, finance API URL, allowed origin
+npm run dev
+```
+
+<!-- TODO: samakan perintah & nama variabel dengan package.json dan .env.example -->
+
+The AI API key and backend URLs stay server-side in this service's configuration.
+
+## Known limitations & roadmap
+
+- Processing is **synchronous** and sends base64 images to the provider; timeouts, payload limits, concurrency limits, and cost controls are still to be designed.
+- Master data is fetched page by page; latency is not yet bounded for users with very large datasets.
+- DTOs are duplicated from the finance API instead of generated from a shared contract.
+
+## Related repositories
+
+[`fe-web`](https://github.com/fintrack-labs/fe-web) · [`be-auth-ts`](https://github.com/fintrack-labs/be-auth-ts) · [`be-node-ts`](https://github.com/fintrack-labs/be-node-ts) · [`be-api-client-test`](https://github.com/fintrack-labs/be-api-client-test)
