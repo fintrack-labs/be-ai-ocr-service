@@ -10,7 +10,7 @@ This service receives a transaction-related image, asks an AI model to analyze i
 - HTTP framework: Fastify
 - Persistence: none. Do not store images, extracted results, or transaction history.
 - Processing: synchronous request/response; no queue or background job in v1.
-- Master data: fetch accounts and categories from `be-express-ts`; do not require the frontend to submit those lists.
+- Master data: fetch accounts and categories from `be-node-ts`; do not require the frontend to submit those lists.
 - The service analyzes the image directly with a vision-capable AI provider. A separate OCR pipeline is not required unless the chosen provider needs one.
 - Keep AI provider credentials and backend base URL in environment configuration. Never expose provider credentials to the frontend.
 
@@ -51,7 +51,7 @@ The release requirement is zero known vulnerabilities in all direct and transiti
 
 ## Backend master-data contracts
 
-Source: NestJS modules in `be-express-ts/src/modules`.
+Source: NestJS modules in `be-node-ts/src/modules`.
 
 ### Accounts
 
