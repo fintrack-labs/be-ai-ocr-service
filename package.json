@@ -1,0 +1,20 @@
+{
+  "name": "be-ai-ocr-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.6"
+  },
+  "scripts": {
+    "start": "node --env-file=.env src/server.js",
+    "dev": "node --env-file=.env --watch src/server.js",
+    "test": "node --test",
+    "audit": "npm audit --audit-level=low"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.3.0",
+    "@fastify/multipart": "^9.0.3",
+    "fastify": "^5.6.2"
+  }
+}
